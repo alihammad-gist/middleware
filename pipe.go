@@ -12,11 +12,11 @@ import (
 func NewPipe(mws ...Middleware) *Pipe {
 
 	// source https://github.com/go-midway/midway/blob/master/middleware.go
-	middleware := func(inner http.Handler) http.Handler {
+	middleware := func(next http.Handler) http.Handler {
 		for i := len(mws) - 1; i >= 0; i-- {
-			inner = mws[i].Process(inner)
+			next = mws[i].Process(next)
 		}
-		return inner
+		return next
 	}
 
 	return &Pipe{
@@ -41,10 +41,7 @@ func (p *Pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Process implements Middleware interface so Pipe itself can be
 // used as a middleware.
 func (p *Pipe) Process(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler := p.accum.Process(next)
-		handler.ServeHTTP(w, r)
-	})
+	return p.accum.Process(next)
 }
 
 // NoOpHandler is used by Pipe for generating an http.Handler

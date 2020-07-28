@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 )
 
 type (
@@ -19,6 +19,7 @@ type (
 		RequestID  bool
 		RemoteAddr bool
 		RequestURI bool
+		Host       bool
 	}
 )
 
@@ -34,19 +35,21 @@ func init() {
 	})
 }
 
-// RequestIDMiddleware assigns a unique ID (int64) to each request (context). The
+// RequestID assigns a unique ID (int64) to each request (context). The
 // ID can accessed from the context using middleware.KeyRequestID
-func RequestIDMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, KeyRequestID{}, uidGen.Next())
-		next.ServeHTTP(w, r.WithContext(ctx))
+func RequestID() Middleware {
+	return Func(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, KeyRequestID{}, uidGen.Next())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	})
 }
 
 // RequestLogger logs each http request, logging the specified fields in passed in
 // middleware.LoggerOptions value.
-func RequestLogger(opts LoggerOptions, logger *log.Logger) Middleware {
+func RequestLogger(logger *log.Logger, opts LoggerOptions) Middleware {
 	return Continue(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		msgs := []string{}
 
@@ -54,22 +57,27 @@ func RequestLogger(opts LoggerOptions, logger *log.Logger) Middleware {
 			reqID := r.Context().Value(KeyRequestID{})
 			if reqID != nil {
 				id := reqID.(int64)
-				msgs = append(msgs, "RequestID: " + strconv.FormatInt(id, 10))
+				msgs = append(msgs, "(RequestID "+strconv.FormatInt(id, 10)+")")
 			} else {
-				msgs = append(msgs, "RequestID: N/A")
+				msgs = append(msgs, "(RequestID N/A)")
+				log.Println("Consider adding middleware.RequestId to your root middleware Pipe")
 			}
 		}
 
 		if opts.RemoteAddr {
-			msgs = append(msgs, "RemoteAddr: " + r.RemoteAddr)
+			msgs = append(msgs, "(RemoteAddr "+r.RemoteAddr+")")
 		}
 
 		if opts.RequestURI {
-			msgs = append(msgs, "RequestURI: " + r.RequestURI)
+			msgs = append(msgs, "(RequestURI "+r.RequestURI+")")
+		}
+
+		if opts.Host {
+			msgs = append(msgs, "(Host "+r.Host+")")
 		}
 
 		if len(msgs) > 0 {
-			logger.Println(strings.Join(msgs, ", "))
+			logger.Println(strings.Join(msgs, " "))
 		}
 	}))
 }
