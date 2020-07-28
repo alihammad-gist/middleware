@@ -32,7 +32,7 @@ func main() {
     }
 
     http.Handle("/", middleware.NewPipe(
-        // middleware.RequestID(),
+        middleware.RequestID(),
         middleware.RequestLogger(log.New(os.Stdout, "HTTP-Request ", log.LstdFlags), loggerOpts),
         middleware.Terminate(mux), // attach your pat multiplexer
     ))
