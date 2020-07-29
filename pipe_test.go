@@ -28,6 +28,10 @@ func TestSomething(t *testing.T) {
 			),
 		),
 		middleware.Terminate(createHandler("Tenth", t)),
+		middleware.NewPipe(
+			createMiddleware("Eleventh", t),
+			createMiddleware("...", t),
+		),
 	)
 
 	w := httptest.NewRecorder()

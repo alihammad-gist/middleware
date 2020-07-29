@@ -7,8 +7,6 @@ This package provides middleware pipe abstraction on top of the famous `func(htt
 
 Any middlewares with signature `func(http.Handler) http.Handler` can be used with this package. Following are a few examples of programs using this package.
 
-
-
 ```golang
 package main
 

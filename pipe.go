@@ -1,7 +1,3 @@
-// Package middleware provides abstraction for using middlewares, middleware can be
-// thought of as something that sits in the middle of a process. It is a function, that
-// when given its own continuation (function) will produce continuation for middlewares
-// that depend on it.
 package middleware
 
 import (
@@ -10,39 +6,41 @@ import (
 
 // NewPipe creates a new middleware pipe. It can be thought of an expression
 func NewPipe(mws ...Middleware) *Pipe {
+	flat := make([]Middleware, 0)
 
-	// source https://github.com/go-midway/midway/blob/master/middleware.go
-	middleware := func(next http.Handler) http.Handler {
-		for i := len(mws) - 1; i >= 0; i-- {
-			next = mws[i].Process(next)
+	for i := 0; i < len(mws); i++ {
+		switch m := mws[i].(type) {
+		case *Pipe:
+			flat = append(flat, m.middlewares...)
+		default:
+			flat = append(flat, m)
 		}
-		return next
 	}
 
 	return &Pipe{
-		accum: Func(middleware),
+		middlewares: flat,
 	}
 }
 
 // Pipe is a pipeline of middlewares
 type Pipe struct {
-	accum Middleware // accumulated middleware
+	middlewares []Middleware
+	cached      http.Handler
 }
 
-// ServeHTTP implements http.Handler interface, call this function to
-// start the Middleware pipe evaluation process.
 func (p *Pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// we are piping an noOpHandler to the last middleware
-	// in order to produce the actual handler
-	handler := p.accum.Process(http.HandlerFunc(NoOpHandler))
-	handler.ServeHTTP(w, r)
+	if p.cached == nil {
+		p.cached = p.Process(http.HandlerFunc(NoOpHandler))
+	}
+
+	p.cached.ServeHTTP(w, r)
 }
 
-// Process implements Middleware interface so Pipe itself can be
-// used as a middleware.
 func (p *Pipe) Process(next http.Handler) http.Handler {
-	return p.accum.Process(next)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		next = p.middlewares[i].Process(next)
+	}
+	return next
 }
 
-// NoOpHandler is used by Pipe for generating an http.Handler
 func NoOpHandler(_ http.ResponseWriter, _ *http.Request) {}

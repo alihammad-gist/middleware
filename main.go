@@ -1,6 +1,7 @@
-// Package middleware provides abstraction on top of the famous middleware
-// pattern: `middleware(http.Handler) http.Handler`. It provide middleware
-// pipe and some predefined middlewares.
+// Package middleware provides abstraction for using middlewares, middleware can be
+// thought of as something that sits in the middle of a process. It is a function, that
+// when given its own continuation (function) will produce continuation for middlewares
+// that depend on it.
 package middleware
 
 import (
